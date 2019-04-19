@@ -31,6 +31,7 @@ import configparser
 import sys
 import cv2
 import wget
+import pyzed.sl as sl
 
 def download_calibration_file(serial_number) :
     # if os.name == 'nt' :
@@ -144,41 +145,55 @@ class Resolution :
 
 def main() :
 
-    if len(sys.argv) == 1 :
-        print('Please provide ZED serial number')
-        exit(1)
+    init = sl.InitParameters()
+    init.coordinate_units = sl.UNIT.UNIT_METER
+    cam = sl.Camera()
+    status = cam.open(init)
+    runtime = sl.RuntimeParameters()
+    runtime.sensing_mode = sl.SENSING_MODE.SENSING_MODE_STANDARD
+    mat1 = sl.Mat()
+    mat2 = sl.Mat()
 
-    # Open the ZED camera
-    cap = cv2.VideoCapture(0)
-    if cap.isOpened() == 0:
-        exit(-1)
+    # if len(sys.argv) == 1 :
+    #     print('Please provide ZED serial number')
+    #     exit(1)
 
-    image_size = Resolution()
-    image_size.width = 1280
-    image_size.height = 720
+    # # Open the ZED camera
+    # cap = cv2.VideoCapture(0)
+    # if cap.isOpened() == 0:
+    #     exit(-1)
 
-    # Set the video resolution to HD720
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, image_size.width*2)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, image_size.height)
+    # image_size = Resolution()
+    # image_size.width = 1280
+    # image_size.height = 720
 
-    serial_number = int(sys.argv[1])
-    calibration_file = download_calibration_file(serial_number)
-    if calibration_file  == "":
-        exit(1)
-    print("Calibration file found. Loading...")
+    # # Set the video resolution to HD720
+    # cap.set(cv2.CAP_PROP_FRAME_WIDTH, image_size.width*2)
+    # cap.set(cv2.CAP_PROP_FRAME_HEIGHT, image_size.height)
 
-    camera_matrix_left, camera_matrix_right, map_left_x, map_left_y, map_right_x, map_right_y = init_calibration(calibration_file, image_size)
+    # serial_number = int(sys.argv[1])
+    # calibration_file = download_calibration_file(serial_number)
+    # if calibration_file  == "":
+    #     exit(1)
+    # print("Calibration file found. Loading...")
+
+    # camera_matrix_left, camera_matrix_right, map_left_x, map_left_y, map_right_x, map_right_y = init_calibration(calibration_file, image_size)
 
     while True :
         # Get a new frame from camera
-        retval, frame = cap.read()
+        #retval, frame = cap.read()
         # Extract left and right images from side-by-side
-        left_right_image = np.split(frame, 2, axis=1)
+        #left_right_image = np.split(frame, 2, axis=1)
         # Display images
-        cv2.imshow("left RAW", left_right_image[0])
+        err = cam.grab(runtime)
+        cam.retrieve_image(mat1, sl.VIEW.VIEW_LEFT)
+        cam.retrieve_image(mat2, sl.VIEW.VIEW_RIGHT)
+        left_rect = mat1.get_data()
+        right_rect = mat2.get_data()
+        #cv2.imshow("left RAW", left_right_image[0])
 
-        left_rect = cv2.remap(left_right_image[0], map_left_x, map_left_y, interpolation=cv2.INTER_LINEAR)
-        right_rect = cv2.remap(left_right_image[1], map_right_x, map_right_y, interpolation=cv2.INTER_LINEAR)
+        #left_rect = cv2.remap(left_right_image[0], map_left_x, map_left_y, interpolation=cv2.INTER_LINEAR)
+        #right_rect = cv2.remap(left_right_image[1], map_right_x, map_right_y, interpolation=cv2.INTER_LINEAR)
 
         cv2.imshow("left RECT", left_rect)
         cv2.imshow("right RECT", right_rect)
